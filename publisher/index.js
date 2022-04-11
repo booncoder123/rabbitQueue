@@ -2,9 +2,11 @@ import express from "express";
 import amqp from "amqplib";
 import cors from "cors";
 import dotenv from "dotenv";
+import axios from "axios";
+import Store from "./model/store.model.js";
 dotenv.config();
 
-// import connectMongo from "@src/loaders/mongoose";
+import connectMongo from "./loaders/mongoose.js";
 
 async function startServer() {
   const app = express();
@@ -12,7 +14,7 @@ async function startServer() {
   app.use(cors());
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
-
+  await connectMongo();
   app.use("/send-message", async (req, res, next) => {
     try {
       //connect to queue
@@ -25,6 +27,30 @@ async function startServer() {
       console.log(error);
     }
   });
+  app.use("/store", async (req, res, next) => {
+    const { position } = req.body;
+    console.log("position");
+    axios.get("https://fakestoreapi.com/products").then(function (response) {
+      // handle success
+      // console.log(response);
+      const store = response.data;
+
+      const ob = store[1];
+      const { title, price, description, category, image } = ob;
+      console.log(title, price, description, category, image);
+
+      const product = new Store({
+        title,
+        price,
+        description,
+        category,
+        image,
+      });
+      product.save();
+
+      res.send(product);
+    });
+  });
 
   app
     .listen(process.env.PORT_NUMBER, () => {
@@ -33,7 +59,7 @@ async function startServer() {
       );
     })
     .on("error", (err) => {
-      Logger.error(err);
+      console.log(err);
       process.exit(1);
     });
 }
